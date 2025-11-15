@@ -41,6 +41,7 @@ UAVS = [
 USVS = [
     'usv',
     'wam-v',
+    'sailboat',
 ]
 
 WAVEFIELD_SIZE = {'sydney_regatta': 1000,}
