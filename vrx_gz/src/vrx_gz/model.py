@@ -242,8 +242,20 @@ class Model:
         xacro_process = subprocess.Popen(xacro_command,
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
-        stdout = xacro_process.communicate()[0]
+        stdout, stderr = xacro_process.communicate()
+        
+        # Check for xacro errors
+        if stderr:
+            err_output = codecs.getdecoder('unicode_escape')(stderr)[0]
+            if err_output.strip():
+                print(f"Xacro warning/error: {err_output}")
+        
+        if not stdout:
+            raise RuntimeError(f"Xacro failed to generate URDF from {self.urdf}")
+        
+        print(f"DEBUG: stdout type={type(stdout)}, len={len(stdout) if stdout else 0}")
         urdf_str = codecs.getdecoder('unicode_escape')(stdout)[0]
+        print(f"DEBUG: urdf_str type={type(urdf_str)}, len={len(urdf_str)}")
         print(xacro_command)
 
         # run gz sdf print to generate sdf file
@@ -263,20 +275,34 @@ class Model:
         if not self.urdf:
             self.urdf = os.path.join(get_package_share_directory('wamv_gazebo'),
                                      'urdf', 'wamv_gazebo.urdf.xacro')
+        print(f"DEBUG generate(): About to call xacro_cmd()")
         command = self.xacro_cmd()
+        print(f"DEBUG generate(): xacro_cmd returned command={command}")
         process = subprocess.Popen(command,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
 
+        # Call communicate() once and get both stdout and stderr
+        print(f"DEBUG generate(): About to call communicate()")
+        stdout, stderr = process.communicate()
+        print(f"DEBUG generate(): communicate() returned, stdout type={type(stdout)}, stderr type={type(stderr)}")
+        
+        # Check for errors first
+        if not stdout:
+            err_msg = codecs.getdecoder('unicode_escape')(stderr)[0] if stderr else "Unknown error"
+            raise RuntimeError(f"gz sdf -p failed: {err_msg}")
+        
+        print(f"DEBUG generate(): About to decode stderr, len={len(stderr) if stderr else 0}")
         # evaluate error output for the xacro process
-        stderr = process.communicate()[1]
-        err_output = codecs.getdecoder('unicode_escape')(stderr)[0]
-        for line in err_output.splitlines():
-            if line.find('undefined local') > 0:
-                raise RuntimeError(line)
+        if stderr:
+            err_output = codecs.getdecoder('unicode_escape')(stderr)[0]
+            for line in err_output.splitlines():
+                if line.find('undefined local') > 0:
+                    raise RuntimeError(line)
 
-        stdout = process.communicate()[0]
+        print(f"DEBUG generate(): About to decode stdout, len={len(stdout)}")
         model_sdf = codecs.getdecoder('unicode_escape')(stdout)[0]
+        print(f"DEBUG generate(): Decoded model_sdf, type={type(model_sdf)}, len={len(model_sdf)}")
 
         # parse sdf for payloads if model is urdf
         if self.urdf != '':
@@ -287,6 +313,7 @@ class Model:
         #     f.write(model_sdf)
         # print(command)
 
+        print(f"DEBUG generate(): About to return, command type={type(command)}, model_sdf type={type(model_sdf)}")
         return command, model_sdf
 
     def name_from_plugin(self, plugin_sdf):
@@ -308,10 +335,13 @@ class Model:
         for plugin in plugins:
             if plugin.name() == 'gz::sim::systems::Thruster':
                 name = self.name_from_plugin(plugin.__str__())
-                payload['thruster_thrust_' + name] = [link.name(), name]
+                if name:
+                    payload['thruster_thrust_' + name] = [link.name(), name]
             elif plugin.name() == 'gz::sim::systems::JointPositionController':
                 name = self.name_from_plugin(plugin.__str__())
-                payload['thruster_rotate_' + name] = [link.name(), name]
+                if name:
+                    payload['thruster_rotate_' + name] = [link.name(), name]
+                # JointPositionController doesn't need payload tracking for VRX
             else:
                 payload[plugin.name()] = ['', plugin.filename()]
         return payload

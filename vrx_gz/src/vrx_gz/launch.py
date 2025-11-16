@@ -369,17 +369,42 @@ def spawn(sim_mode, world_name, models, robot=None):
                 output='screen',
             ))
 
-            # robot_state_publisher (tf for wamv)
-            model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models/wamv/tmp')
-            urdf_file = os.path.join(model_dir, 'model.urdf')
-            with open(urdf_file, 'r') as infp:
-                robot_desc = infp.read()
-            params = {'use_sim_time': use_sim_time, 'frame_prefix': 'wamv/', 'robot_description': robot_desc}
+            # robot_state_publisher (tf for robot model)
+            # Use the model's URDF if available, otherwise fall back to wamv
+            if model.urdf:
+                urdf_file = model.urdf
+                # If relative path, make it absolute from current working directory
+                if not os.path.isabs(urdf_file):
+                    urdf_file = os.path.abspath(urdf_file)
+                
+                if os.path.exists(urdf_file):
+                    # Process xacro files
+                    if urdf_file.endswith('.xacro'):
+                        import xacro
+                        robot_desc = xacro.process_file(urdf_file, mappings={'namespace': model.model_name}).toxml()
+                    else:
+                        with open(urdf_file, 'r') as infp:
+                            robot_desc = infp.read()
+                else:
+                    # Fall back to wamv if file doesn't exist
+                    model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models/wamv/tmp')
+                    urdf_file = os.path.join(model_dir, 'model.urdf')
+                    with open(urdf_file, 'r') as infp:
+                        robot_desc = infp.read()
+            else:
+                model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models/wamv/tmp')
+                urdf_file = os.path.join(model_dir, 'model.urdf')
+                with open(urdf_file, 'r') as infp:
+                    robot_desc = infp.read()
+            
+            # Use model name for frame prefix instead of hardcoded 'wamv'
+            frame_prefix = f'{model.model_name}/'
+            params = {'use_sim_time': use_sim_time, 'frame_prefix': frame_prefix, 'robot_description': robot_desc}
             nodes.append(Node(package='robot_state_publisher',
                                   executable='robot_state_publisher',
                                   output='both',
                                   parameters=[params],
-                                  remappings=[('/joint_states', '/wamv/joint_states')]))
+                                  remappings=[('/joint_states', f'/{model.model_name}/joint_states')]))
 
             group_action = GroupAction([
                 PushRosNamespace(model.model_name),
