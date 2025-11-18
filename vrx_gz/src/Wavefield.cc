@@ -63,7 +63,7 @@ class vrx::WavefieldPrivate
     wavelength(2 * M_PI / this->DeepWaterDispersionToWavenumber(2.0 * M_PI)),
     wavenumber(this->DeepWaterDispersionToWavenumber(2.0 * M_PI)),
     tau(2.0),
-    gain(1.0)
+    gain(0.0)  // Changed from 1.0 to 0.0
   {
   }
 

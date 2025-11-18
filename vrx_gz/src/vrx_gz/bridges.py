@@ -228,3 +228,12 @@ def usv_wind_direction():
         gz_type='gz.msgs.Float',
         ros_type='std_msgs/msg/Float32',
         direction=BridgeDirection.GZ_TO_ROS)
+
+def joint_cmd_pos(model_name, joint_name):
+    """Bridge for joint position commands (sail, rudder, etc.)"""
+    return Bridge(
+        gz_topic=f'/model/{model_name}/joint/{joint_name}/cmd_pos',
+        ros_topic=f'joint/{joint_name}/cmd_pos',
+        gz_type='gz.msgs.Double',
+        ros_type='std_msgs/msg/Float64',
+        direction=BridgeDirection.ROS_TO_GZ)

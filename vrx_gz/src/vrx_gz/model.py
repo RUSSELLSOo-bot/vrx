@@ -91,7 +91,11 @@ class Model:
                 vrx_gz.bridges.cmd_vel(self.model_name)
             ])
         elif self.is_USV():
-            pass
+            # Add joint command bridges for sail and rudder
+            bridges.extend([
+                vrx_gz.bridges.joint_cmd_pos(self.model_name, 'sail'),
+                vrx_gz.bridges.joint_cmd_pos(self.model_name, 'rudder'),
+            ])
 
         return [bridges, nodes, custom_launches]
 
