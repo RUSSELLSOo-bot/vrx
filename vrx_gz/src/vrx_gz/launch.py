@@ -261,7 +261,8 @@ def competition_bridges(world_name, competition_mode=False):
     if not competition_mode:
         bridges.extend([
             vrx_gz.bridges.usv_wind_speed(),
-            vrx_gz.bridges.usv_wind_direction()
+            vrx_gz.bridges.usv_wind_direction(),
+            vrx_gz.bridges.sail_force_torque()
         ])
 
     task_bridges = []
@@ -381,7 +382,8 @@ def spawn(sim_mode, world_name, models, robot=None):
                     # Process xacro files
                     if urdf_file.endswith('.xacro'):
                         import xacro
-                        robot_desc = xacro.process_file(urdf_file, mappings={'namespace': model.model_name}).toxml()
+                        # Don't pass namespace to xacro - frame_prefix will handle it
+                        robot_desc = xacro.process_file(urdf_file, mappings={}).toxml()
                     else:
                         with open(urdf_file, 'r') as infp:
                             robot_desc = infp.read()

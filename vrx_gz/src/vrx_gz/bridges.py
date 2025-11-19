@@ -237,3 +237,12 @@ def joint_cmd_pos(model_name, joint_name):
         gz_type='gz.msgs.Double',
         ros_type='std_msgs/msg/Float64',
         direction=BridgeDirection.ROS_TO_GZ)
+
+def sail_force_torque(model_name='sailboat'):
+    """Bridge for sail force/torque sensor"""
+    return Bridge(
+        gz_topic=f'/sailboat/sail/force_torque',
+        ros_topic=f'/sailboat/sail/force_torque',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)
