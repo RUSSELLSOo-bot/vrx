@@ -246,3 +246,48 @@ def sail_force_torque(model_name='sailboat'):
         gz_type='gz.msgs.Wrench',
         ros_type='geometry_msgs/msg/Wrench',
         direction=BridgeDirection.GZ_TO_ROS)
+
+def rudder_force_torque(model_name='sailboat'):
+    """Bridge for rudder force/torque sensor"""
+    return Bridge(
+        gz_topic=f'/sailboat/rudder/force_torque',
+        ros_topic=f'/sailboat/rudder/force_torque',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)
+
+def base_link_force_torque(model_name='sailboat'):
+    """Bridge for base_link force/torque sensor"""
+    return Bridge(
+        gz_topic=f'/sailboat/base_link/force_torque',
+        ros_topic=f'/sailboat/base_link/force_torque',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)
+
+def base_link_total_wrench(model_name='sailboat'):
+    """Bridge for base_link total wrench (from BaseLinkWrenchPlugin) - DEPRECATED"""
+    return Bridge(
+        gz_topic=f'/sailboat/base_link/total_wrench',
+        ros_topic=f'/sailboat/base_link/total_wrench',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)
+
+def base_link_gravity_wrench(model_name='sailboat'):
+    """Bridge for base_link gravity wrench (from BaseLinkWrenchPlugin)"""
+    return Bridge(
+        gz_topic=f'/sailboat/base_link/gravity_wrench',
+        ros_topic=f'/sailboat/base_link/gravity_wrench',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)
+
+def base_link_net_minus_gravity(model_name='sailboat'):
+    """Bridge for base_link net-minus-gravity wrench (from BaseLinkWrenchPlugin)"""
+    return Bridge(
+        gz_topic=f'/sailboat/base_link/net_minus_gravity',
+        ros_topic=f'/sailboat/base_link/net_minus_gravity',
+        gz_type='gz.msgs.Wrench',
+        ros_type='geometry_msgs/msg/Wrench',
+        direction=BridgeDirection.GZ_TO_ROS)

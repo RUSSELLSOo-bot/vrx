@@ -262,7 +262,12 @@ def competition_bridges(world_name, competition_mode=False):
         bridges.extend([
             vrx_gz.bridges.usv_wind_speed(),
             vrx_gz.bridges.usv_wind_direction(),
-            vrx_gz.bridges.sail_force_torque()
+            vrx_gz.bridges.sail_force_torque(),
+            vrx_gz.bridges.rudder_force_torque(),
+            vrx_gz.bridges.base_link_force_torque(),
+            vrx_gz.bridges.base_link_total_wrench(),  # Deprecated, kept for compatibility
+            vrx_gz.bridges.base_link_gravity_wrench(),
+            vrx_gz.bridges.base_link_net_minus_gravity()
         ])
 
     task_bridges = []

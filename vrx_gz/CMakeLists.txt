@@ -153,6 +153,7 @@ install(
 list(APPEND VRX_GZ_PLUGINS
   AcousticPingerPlugin
   BallShooterPlugin
+  BaseLinkWrenchPlugin
   LightBuoyPlugin
   NavigationScoringPlugin
   GymkhanaScoringPlugin
@@ -175,6 +176,9 @@ foreach(PLUGIN ${VRX_GZ_PLUGINS})
     gz-rendering${GZ_RENDERING_VER}::gz-rendering${GZ_RENDERING_VER}
     gz-sensors${GZ_SENSORS_VER}::gz-sensors${GZ_SENSORS_VER}
     gz-utils${GZ_UTILS_VER}::gz-utils${GZ_UTILS_VER}
+    gz-msgs10
+    gz-transport${GZ_TRANSPORT_VER}::gz-transport${GZ_TRANSPORT_VER}
+    gz-math${GZ_MATH_VER}
     ScoringPlugin
     Waves
     Eigen3::Eigen
