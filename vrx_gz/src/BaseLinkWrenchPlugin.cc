@@ -192,6 +192,7 @@
    math::Vector3d FgravBody =
        qWorldToBody.Inverse().RotateVector(FgravWorld);
  
+
    // Torque from gravity about link frame origin:
    // r_body = COM position relative to link frame (body frame)
    math::Vector3d rBody = inertial.Pose().Pos();  // COM offset in link frame
@@ -199,7 +200,7 @@
  
    // --- EVERYTHING-BUT-GRAVITY WRENCH ---
    math::Vector3d FnonGravBody  = Fbody - FgravBody;
-   math::Vector3d taunonGravBody = tauBody - tauGravBody;
+   math::Vector3d taunonGravBody = tauBody;
  
    // --- Publish GRAVITY wrench ---
    if (this->gravWrenchPub)
