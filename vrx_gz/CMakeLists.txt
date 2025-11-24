@@ -44,7 +44,6 @@ ament_environment_hooks("hooks/resource_paths.dsv.in")
 ament_environment_hooks("hooks/resource_paths.sh")
 
 #============================================================================
-
 # Waves
 add_library(Waves SHARED
   src/Wavefield.cc
@@ -74,7 +73,6 @@ target_link_libraries(PolyhedraBuoyancyDrag PUBLIC
 install(
   TARGETS PolyhedraBuoyancyDrag
   DESTINATION lib)
-
 
 # Base scoring plugin
 add_library(ScoringPlugin SHARED
@@ -107,7 +105,7 @@ install(
 # Wayfinding scoring plugin
 add_library(WayfindingScoringPlugin SHARED
   src/WayfindingScoringPlugin.cc
-  src/WaypointMarkers
+  src/WaypointMarkers.cc
 )
 target_link_libraries(WayfindingScoringPlugin PUBLIC
   gz-common${GZ_COMMON_VER}::gz-common${GZ_COMMON_VER}
@@ -122,7 +120,7 @@ install(
 # Acoustic perception scoring plugin
 add_library(AcousticPerceptionScoringPlugin SHARED
   src/AcousticPerceptionScoringPlugin.cc
-  src/WaypointMarkers
+  src/WaypointMarkers.cc
 )
 target_link_libraries(AcousticPerceptionScoringPlugin PUBLIC
   gz-common${GZ_COMMON_VER}::gz-common${GZ_COMMON_VER}
@@ -137,7 +135,7 @@ install(
 # AcousticTracking scoring plugin
 add_library(AcousticTrackingScoringPlugin SHARED
   src/AcousticTrackingScoringPlugin.cc
-  src/WaypointMarkers
+  src/WaypointMarkers.cc
 )
 target_link_libraries(AcousticTrackingScoringPlugin PUBLIC
   gz-common${GZ_COMMON_VER}::gz-common${GZ_COMMON_VER}
@@ -149,10 +147,13 @@ install(
   TARGETS AcousticTrackingScoringPlugin
   DESTINATION lib)
 
-# Plugins
+#============================================================================
+# Core VRX plugins
 list(APPEND VRX_GZ_PLUGINS
   AcousticPingerPlugin
   BallShooterPlugin
+  BaseLinkWrenchPlugin
+  LiftDragForcePublisher
   LightBuoyPlugin
   NavigationScoringPlugin
   GymkhanaScoringPlugin
@@ -168,10 +169,19 @@ list(APPEND VRX_GZ_PLUGINS
 )
 
 foreach(PLUGIN ${VRX_GZ_PLUGINS})
-  add_library(${PLUGIN} SHARED src/${PLUGIN}.cc)
+  # Special case for LiftDragForcePublisher - source filename doesn't match plugin name
+  if(PLUGIN STREQUAL "LiftDragForcePublisher")
+    add_library(${PLUGIN} SHARED src/lift_drag_force_publishers.cc)
+  else()
+    add_library(${PLUGIN} SHARED src/${PLUGIN}.cc)
+  endif()
+
   target_link_libraries(${PLUGIN} PUBLIC
     gz-sim${GZ_SIM_VER}::core
     gz-plugin${GZ_PLUGIN_VER}::gz-plugin${GZ_PLUGIN_VER}
+    gz-transport${GZ_TRANSPORT_VER}::gz-transport${GZ_TRANSPORT_VER}
+    gz-msgs10::gz-msgs10
+    gz-math${GZ_MATH_VER}
     gz-rendering${GZ_RENDERING_VER}::gz-rendering${GZ_RENDERING_VER}
     gz-sensors${GZ_SENSORS_VER}::gz-sensors${GZ_SENSORS_VER}
     gz-utils${GZ_UTILS_VER}::gz-utils${GZ_UTILS_VER}
@@ -185,6 +195,8 @@ install(
   TARGETS ${VRX_GZ_PLUGINS}
   DESTINATION lib)
 
+#============================================================================
+# Python package
 ament_python_install_package(
   vrx_gz
   PACKAGE_DIR src/vrx_gz
