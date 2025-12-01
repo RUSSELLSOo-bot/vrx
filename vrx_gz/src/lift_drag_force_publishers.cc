@@ -129,50 +129,80 @@ void LiftDragForcePublisher::Configure(
       std::cerr << "[LiftDragForcePublisher] ERROR: <area> not specified in SDF!\n";
     }
   
-    // Aerodynamic coefficients
-    if (_sdf->HasElement("cla"))
+    // Normalization parameters
+    if (_sdf->HasElement("cl_max"))
     {
-      this->cla = _sdf->Get<double>("cla");
+      this->cl_max = _sdf->Get<double>("cl_max");
+      std::cout << "[LiftDragForcePublisher] cl_max = " << this->cl_max << "\n";
     }
-    else
+    
+    if (_sdf->HasElement("cd_max"))
     {
-      std::cerr << "[LiftDragForcePublisher] ERROR: <cla> not specified in SDF!\n";
+      this->cd_max = _sdf->Get<double>("cd_max");
+      std::cout << "[LiftDragForcePublisher] cd_max = " << this->cd_max << "\n";
     }
-  
-    if (_sdf->HasElement("cda"))
+
+    // Normalized linear regression coefficients for Cl
+    if (_sdf->HasElement("cla_norm"))
     {
-      this->cda = _sdf->Get<double>("cda");
+      this->cla_norm = _sdf->Get<double>("cla_norm");
+      std::cout << "[LiftDragForcePublisher] cla_norm = " << this->cla_norm << "\n";
     }
-    else
+
+    if (_sdf->HasElement("cl0_norm"))
     {
-      std::cerr << "[LiftDragForcePublisher] ERROR: <cda> not specified in SDF!\n";
+      this->cl0_norm = _sdf->Get<double>("cl0_norm");
+      std::cout << "[LiftDragForcePublisher] cl0_norm = " << this->cl0_norm << "\n";
     }
-  
+
+    // Normalized quartic regression coefficients for Cd
+    if (_sdf->HasElement("cd_a_norm"))
+    {
+      this->cd_a_norm = _sdf->Get<double>("cd_a_norm");
+      std::cout << "[LiftDragForcePublisher] cd_a_norm (quartic) = " << this->cd_a_norm << "\n";
+    }
+
+    if (_sdf->HasElement("cd_b_norm"))
+    {
+      this->cd_b_norm = _sdf->Get<double>("cd_b_norm");
+      std::cout << "[LiftDragForcePublisher] cd_b_norm (cubic) = " << this->cd_b_norm << "\n";
+    }
+
+    if (_sdf->HasElement("cd_c_norm"))
+    {
+      this->cd_c_norm = _sdf->Get<double>("cd_c_norm");
+      std::cout << "[LiftDragForcePublisher] cd_c_norm (quadratic) = " << this->cd_c_norm << "\n";
+    }
+
+    if (_sdf->HasElement("cd_d_norm"))
+    {
+      this->cd_d_norm = _sdf->Get<double>("cd_d_norm");
+      std::cout << "[LiftDragForcePublisher] cd_d_norm (linear) = " << this->cd_d_norm << "\n";
+    }
+
+    if (_sdf->HasElement("cd_e_norm"))
+    {
+      this->cd_e_norm = _sdf->Get<double>("cd_e_norm");
+      std::cout << "[LiftDragForcePublisher] cd_e_norm (constant) = " << this->cd_e_norm << "\n";
+    }
+
+    // Stall parameters
     if (_sdf->HasElement("alpha_stall"))
     {
       this->alphaStall = _sdf->Get<double>("alpha_stall");
+      std::cout << "[LiftDragForcePublisher] alpha_stall = " << this->alphaStall << "°\n";
     }
-    else
-    {
-      std::cerr << "[LiftDragForcePublisher] ERROR: <alpha_stall> not specified in SDF!\n";
-    }
-  
+
     if (_sdf->HasElement("cla_stall"))
     {
       this->claStall = _sdf->Get<double>("cla_stall");
+      std::cout << "[LiftDragForcePublisher] cla_stall = " << this->claStall << "\n";
     }
-    else
-    {
-      std::cerr << "[LiftDragForcePublisher] ERROR: <cla_stall> not specified in SDF!\n";
-    }
-  
+
     if (_sdf->HasElement("cda_stall"))
     {
       this->cdaStall = _sdf->Get<double>("cda_stall");
-    }
-    else
-    {
-      std::cerr << "[LiftDragForcePublisher] ERROR: <cda_stall> not specified in SDF!\n";
+      std::cout << "[LiftDragForcePublisher] cda_stall = " << this->cdaStall << "\n";
     }
   
     // Direction vectors
@@ -300,33 +330,48 @@ if (velMag < 1e-6)
 gz::math::Vector3d flowDir = velInPlane / velMag;
 
 // Calculate signed angle of attack using atan2 (returns radians)
+// Positive alpha: flow from below; Negative alpha: flow from above
 double alphaRad = atan2(flowDir.Dot(upwardWorld), flowDir.Dot(forwardWorld));
 
 // Convert to degrees
 double alpha = alphaRad * 180.0 / M_PI;
 
+
+
 // Lift direction is perpendicular to flow, in the chord-normal plane
-gz::math::Vector3d liftDir;
-if (std::abs(alphaRad) > 1e-6)  // Avoid singularity at alpha=0
-{
-  liftDir = flowDir.Cross(spanwiseWorld);
-  liftDir.Normalize();
-}
-else
-{
-  // At alpha≈0, no lift or use upward direction
-  liftDir = upwardWorld;
-}
+// Cross product naturally gives correct sign based on flow direction
+gz::math::Vector3d liftDir = flowDir.Cross(spanwiseWorld);
+liftDir.Normalize();
 
     
 
+// ========== Aerodynamic Coefficient Calculation ==========
 double cl, cd;
 
-if (std::abs(alpha*180.0/M_PI) < this->alphaStall)
+if (std::abs(alpha) < this->alphaStall)
 {
-  // Pre-stall: linear region
-  cl = this->cla * alpha;
-  cd = this->cda + this->cdaStall * alpha * alpha;
+  // Pre-stall: use linear lift model (guarantees cl=0 when alpha=0)
+  // Calculate effective lift slope from normalized parameters
+  double cla = this->cla_norm * this->cl_max / this->alphaStall;
+  cl = cla * alpha;  // Simple linear: zero at alpha=0
+  
+  // Drag: use quartic regression (normalized, using Horner's method)
+  // Normalize alpha to [-1, 1] range for drag calculation
+  double alpha_norm = alpha / this->alphaStall;
+  
+  // cd_norm = ((((cd_a*α + cd_b)*α + cd_c)*α + cd_d)*α + cd_e)
+  double cd_norm = this->cd_a_norm;
+  cd_norm = cd_norm * alpha_norm + this->cd_b_norm;
+  cd_norm = cd_norm * alpha_norm + this->cd_c_norm;
+  cd_norm = cd_norm * alpha_norm + this->cd_d_norm;
+  cd_norm = cd_norm * alpha_norm + this->cd_e_norm;
+  
+  // Denormalize to get actual Cd
+  cd = cd_norm * this->cd_max;
+  
+  // Clamp to physically reasonable bounds (with 20% margin for safety)
+  cl = std::clamp(cl, -this->cl_max * 1.2, this->cl_max * 1.2);
+  cd = std::clamp(cd, 0.0, this->cd_max * 2.0);
 }
 else
 {
@@ -347,9 +392,12 @@ double liftMag = q * this->area * cl;
 double dragMag = q * this->area * cd;
 
 // Limit forces to prevent physics explosions
-const double MAX_VELOCITY = 10.0;  // m/s
+const double MAX_VELOCITY = 5.0;  // m/s
 const double q_max = 0.5 * this->airDensity * MAX_VELOCITY * MAX_VELOCITY;
-const double MAX_FORCE = q_max * this->area * (std::abs(this->cla) + this->cda);  
+
+// Calculate max force using maximum coefficients from normalization
+// Maximum total coefficient is the sum of max Cl and max Cd
+const double MAX_FORCE = q_max * this->area * (this->cl_max + this->cd_max);
 
 liftMag = std::clamp(liftMag, -MAX_FORCE, MAX_FORCE);
 dragMag = std::clamp(dragMag, 0.0, MAX_FORCE);
@@ -367,11 +415,10 @@ if (!std::isfinite(totalForce.X()) || !std::isfinite(totalForce.Y()) || !std::is
   return;  // Don't apply invalid forces
 }
 
-
-gz::math::Vector3d cpWorld = linkRot.RotateVector(this->cp);
-
+// Apply force at center of pressure
+// Note: AddWorldForce expects offset in link frame, not world frame
 gz::sim::Link linkAPI(this->linkEntity);
-linkAPI.AddWorldForce(_ecm, totalForce, cpWorld);
+linkAPI.AddWorldForce(_ecm, totalForce, this->cp);
 
 
 gz::msgs::Vector3d Fmsg;
@@ -384,13 +431,11 @@ if (this->velocityPub.Valid())
   
   // Periodic detailed logging (every 100 iterations)
   static int counter = 0;
-  if (counter % 100 == 0)
+  if (counter % 10 == 0)
   {
     std::cout << "[LiftDragForcePublisher] "
               << "vel=" << velMag << " m/s, "
               << "alpha=" << alpha << "°, "
-              << "cl=" << cl << ", cd=" << cd << ", "
-              << "lift=" << liftMag << " N, drag=" << dragMag << " N, "
               << "total_force=[" << totalForce.X() << ", " 
               << totalForce.Y() << ", " << totalForce.Z() << "] N\n";
   }

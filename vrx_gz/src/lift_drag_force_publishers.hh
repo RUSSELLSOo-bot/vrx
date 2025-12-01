@@ -62,13 +62,37 @@ private:
   /// \brief Surface area. Read from SDF <area>.
   double area{0.0};  // Must be specified in SDF
 
-  /// \brief Lift coefficient slope. Read from SDF <cla>.
-  double cla{0.0};  // Must be specified in SDF
+  // Normalization parameters
+  /// \brief Maximum Cl for normalization. Read from SDF <cl_max>.
+  double cl_max{1.0};
 
-  /// \brief Drag coefficient slope. Read from SDF <cda>.
-  double cda{0.0};  // Must be specified in SDF
+  /// \brief Maximum Cd for normalization. Read from SDF <cd_max>.
+  double cd_max{1.0};
 
-  /// \brief Stall angle of attack. Read from SDF <alpha_stall>.
+  // Normalized linear regression for Cl: Cl = (cla_norm * alpha_norm + cl0_norm) * cl_max
+  /// \brief Normalized lift curve slope. Read from SDF <cla_norm>.
+  double cla_norm{0.0};
+
+  /// \brief Normalized lift at alpha=0. Read from SDF <cl0_norm>.
+  double cl0_norm{0.0};
+
+  // Normalized quartic regression for Cd: Cd = (cd_a_norm*α⁴ + cd_b_norm*α³ + cd_c_norm*α² + cd_d_norm*α + cd_e_norm) * cd_max
+  /// \brief Normalized quartic term for drag. Read from SDF <cd_a_norm>.
+  double cd_a_norm{0.0};
+
+  /// \brief Normalized cubic term for drag. Read from SDF <cd_b_norm>.
+  double cd_b_norm{0.0};
+
+  /// \brief Normalized quadratic term for drag. Read from SDF <cd_c_norm>.
+  double cd_c_norm{0.0};
+
+  /// \brief Normalized linear term for drag. Read from SDF <cd_d_norm>.
+  double cd_d_norm{0.0};
+
+  /// \brief Normalized constant term for drag. Read from SDF <cd_e_norm>.
+  double cd_e_norm{0.0};
+
+  /// \brief Stall angle of attack (degrees, also used for alpha normalization). Read from SDF <alpha_stall>.
   double alphaStall{0.0};  // Must be specified in SDF
 
   /// \brief Post-stall lift coefficient. Read from SDF <cla_stall>.
