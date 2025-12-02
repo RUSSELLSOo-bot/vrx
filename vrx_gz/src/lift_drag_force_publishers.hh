@@ -109,4 +109,25 @@ private:
 
   /// \brief Center of pressure in link frame. Read from SDF <cp>.
   gz::math::Vector3d cp{0, 0, 0};  // Must be specified in SDF
+
+  /// \brief Wind subscription node
+  gz::transport::Node windNode;
+  
+  /// \brief Current wind velocity vector (m/s) in world frame
+  gz::math::Vector3d windVelocity{0, 0, 0};
+  
+  /// \brief Flag to enable wind effects (for surfaces in air like sails)
+  bool useWind{false};
+
+  /// \brief Wind speed callback storage
+  std::function<void(const gz::msgs::Float&)> windSpeedCb;
+  
+  /// \brief Wind direction callback storage
+  std::function<void(const gz::msgs::Vector3d&)> windDirectionCb;
+  
+  /// \brief Current wind speed (m/s)
+  double windSpeed{0.0};
+  
+  /// \brief Wind direction unit vector
+  gz::math::Vector3d windDirection{1, 0, 0};
 };

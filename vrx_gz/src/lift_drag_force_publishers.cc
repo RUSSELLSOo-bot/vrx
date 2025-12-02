@@ -243,6 +243,36 @@ void LiftDragForcePublisher::Configure(
     {
       std::cerr << "[LiftDragForcePublisher] ERROR: <cp> not specified in SDF!\n";
     }
+
+    // Optional: Subscribe to wind if use_wind is enabled
+    if (_sdf->HasElement("use_wind"))
+    {
+      this->useWind = _sdf->Get<bool>("use_wind");
+      std::cout << "[LiftDragForcePublisher] use_wind = " << this->useWind << "\n";
+      
+      if (this->useWind)
+      {
+        // Subscribe to wind speed
+        this->windSpeedCb = [this](const gz::msgs::Float &_msg)
+        {
+          this->windSpeed = _msg.data();
+          this->windVelocity = this->windDirection * this->windSpeed;
+        };
+        this->windNode.Subscribe("/vrx/debug/wind/speed", this->windSpeedCb);
+        
+        // Subscribe to wind direction
+        this->windDirectionCb = [this](const gz::msgs::Vector3d &_msg)
+        {
+          this->windDirection = gz::msgs::Convert(_msg);
+          this->windDirection.Normalize();
+          this->windVelocity = this->windDirection * this->windSpeed;
+        };
+        this->windNode.Subscribe("/vrx/debug/wind/direction", this->windDirectionCb);
+        
+        std::cout << "[LiftDragForcePublisher] Subscribed to wind topics for " 
+                  << this->linkName << "\n";
+      }
+    }
   
     // Find the link entity by name
     this->linkEntity = this->model.LinkByName(_ecm, this->linkName);
@@ -280,6 +310,17 @@ if (!worldVelOpt)
 // Get velocity (in world frame) - use math::Vector3d for velocity data
 gz::math::Vector3d velW = *worldVelOpt;
 
+// Calculate relative velocity (accounting for wind if enabled)
+// For aerodynamic surfaces in air: add wind velocity
+// For hydrodynamic surfaces in water: wind has no effect
+gz::math::Vector3d velRelative = velW;
+if (this->useWind)
+{
+  // Apparent wind: wind velocity relative to moving object
+  // velRelative = windVelocity - linkVelocity
+  velRelative = this->windVelocity - velW;
+}
+
 // Build and publish velocity message - use msgs::Vector3d for message
 gz::msgs::Vector3d msg;
 gz::msgs::Set(&msg, velW);
@@ -315,8 +356,9 @@ upwardWorld.Normalize();
 gz::math::Vector3d spanwiseWorld = forwardWorld.Cross(upwardWorld);
 spanwiseWorld.Normalize();
 
-double velSpanwise = velW.Dot(spanwiseWorld);
-gz::math::Vector3d velInPlane = velW - velSpanwise * spanwiseWorld;
+// Use relative velocity for all aerodynamic calculations
+double velSpanwise = velRelative.Dot(spanwiseWorld);
+gz::math::Vector3d velInPlane = velRelative - velSpanwise * spanwiseWorld;
 
 double velMag = velInPlane.Length();
 // If velocity is too small, no aerodynamic forces
